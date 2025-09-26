@@ -1,183 +1,134 @@
-# Desafio Back-end PicPay
+# 💸 PicPay Simplificado - Desafio Back-end
 
-Primeiramente, obrigado pelo seu interesse em trabalhar na melhor plataforma de pagamentos do mundo!
-Abaixo você encontrará todos as informações necessárias para iniciar o seu teste.
+Este projeto é a solução para o Desafio Back-end do PicPay, focado na implementação de uma API RESTful para um sistema simplificado de pagamentos e transferências. O objetivo principal é simular o fluxo de transferência entre usuários, atendendo a requisitos de negócio como validação de saldo, autorização externa e transacionalidade.
 
-## Avisos antes de começar
+## 🚀 Tecnologias Utilizadas
 
-- Leia com atenção este documento todo e tente seguir ao **máximo** as instruções;
-- Crie um repositório no seu GitHub **sem citar nada relacionado ao PicPay**;
-- Faça seus commits no seu repositório;
-- Envie o link do seu repositório para o email **do recrutador responsável**;
-- Você poderá consultar o Google, Stackoverflow ou algum projeto particular na sua máquina;
-- Dê uma olhada nos [Materiais úteis](#materiais-úteis);
-- Dê uma olhada em como será a [entrevista](#para-o-dia-da-entrevista-técnica);
-- Fique à vontade para perguntar qualquer dúvida aos recrutadores;
-- Fique tranquilo, respire, assim como você, também já passamos por essa etapa. Boa sorte! :)
+* **Node.js**
+* **Express** (para a criação da API RESTful)
+* **MySQL/MariaDB** (como banco de dados relacional)
+* **`mysql2/promise`** (para conexão e queries assíncronas ao banco de dados)
 
-_Corpo do Email com o link do repositório do desafio_
+## 🏗️ Arquitetura e Estrutura do Projeto
 
-> Seu Nome
->
-> Nome do recrutador
->
-> Link do repositório
->
-> Link do Linkedin
+O projeto segue uma arquitetura baseada em camadas para garantir coesão e baixo acoplamento:
 
-### Sobre o ambiente da aplicação:
+* **`controllers/`**: Define as rotas (endpoints) da API e lida com a requisição/resposta HTTP (e.g., `UserController.js`, `TransactionController.js`).
+* **`services/`**: Contém a lógica de negócio principal, coordena as operações e aplica as regras do desafio (e.g., validação de saldo, chamadas a serviços externos).
+* **`repositories/`**: Abstrai o acesso ao banco de dados, contendo a lógica de persistência (CRUD) para as entidades (e.g., `UserRepository.js`, `TransactionRepository.js`).
+* **`app.js`**: Arquivo de inicialização, responsável por configurar o servidor Express, o pool de conexões do banco de dados e injetar as dependências.
 
-- Escolha qualquer framework que se sinta **confortável** em trabalhar. Esse teste **não faz** nenhuma preferência,
-  portanto decida por aquele com o qual estará mais seguro em apresentar e conversar com a gente na entrevista ;)
+## ⚙️ Pré-requisitos
 
-- Você pode, inclusive, não optar por framework nenhum. Neste caso, recomendamos a implementação do serviço via script
-  para diminuir a sobrecarga de criar um servidor web;
+Para rodar este projeto, você precisará ter instalado:
 
-- Ainda assim, se optar por um framework tente evitar usar muito métodos mágicos ou atalhos já prontos. Sabemos que
-  essas facilidades aumentam a produtividade no dia-a-dia mas aqui queremos ver o **seu** código e a sua forma de
-  resolver problemas;
+1.  **Node.js** (versão LTS recomendada).
+2.  Um servidor **MySQL** ou **MariaDB** rodando.
 
-> Valorizamos uma boa estrutura de containeres criada por você.
+## 📥 Configuração e Instalação
 
-## Para o dia da entrevista técnica
+### 1. Configuração do Banco de Dados
 
-Na data marcada pelo recrutador tenha sua aplicação rodando na sua máquina local para execução dos testes e para nos
-mostrar os pontos desenvolvidos e possíveis questionamentos.
-Faremos um code review junto contigo como se você já fosse do nosso time :heart:, você poderá explicar o que você
-pensou, como arquitetou e como pode evoluir o projeto.
+1.  Crie um banco de dados chamado `PicPay`.
+2.  Execute o script SQL para criar as tabelas `users` e `transactions`.
 
-## Objetivo: PicPay Simplificado
+    **Modelo Sugerido para o MySQL (Atualizado):**
 
-O PicPay Simplificado é uma plataforma de pagamentos simplificada. Nela é possível depositar e realizar transferências
-de dinheiro entre usuários. Temos 2 tipos de usuários, os comuns e lojistas, ambos têm carteira com dinheiro e realizam
-transferências entre eles.
+    ```sql
+    -- Tabela de Usuários
+    CREATE TABLE users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        full_name VARCHAR(255) NOT NULL,
+        document VARCHAR(14) NOT NULL UNIQUE, -- CPF (11) ou CNPJ (14)
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        user_type ENUM('common', 'merchant') NOT NULL, -- common (comum) ou merchant (lojista)
+        balance DECIMAL(10, 2) DEFAULT 0.00
+    );
 
-### Requisitos
+    -- Tabela de Transações (Atualizada)
+    CREATE TABLE transactions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        payer_id INT NOT NULL,
+        payee_id INT NOT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        status ENUM('pending', 'completed', 'failed') NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (payer_id) REFERENCES users(id),
+        FOREIGN KEY (payee_id) REFERENCES users(id)
+    );
+    ```
 
-A seguir estão algumas regras de negócio que são importantes para o funcionamento do PicPay Simplificado:
+3.  Atualize as credenciais de conexão no arquivo **`app.js`**:
 
-- Para ambos tipos de usuário, precisamos do `Nome Completo`, `CPF`, `e-mail` e `Senha`. CPF/CNPJ e e-mails devem ser
-  únicos no sistema. Sendo assim, seu sistema deve permitir apenas um cadastro com o mesmo CPF ou endereço de e-mail;
+    ```javascript
+    const dbPool = mysql.createPool({
+        host: 'localhost',
+        user: 'root', // <-- Altere conforme necessário
+        password: '', // <-- Altere conforme necessário
+        database: 'PicPay',
+        // ...
+    });
+    ```
 
-- Usuários podem enviar dinheiro (efetuar transferência) para lojistas e entre usuários;
+### 2. Instalação das Dependências
 
-- Lojistas **só recebem** transferências, não enviam dinheiro para ninguém;
+1.  Navegue até o diretório raiz do projeto.
+2.  Instale as dependências Node.js (certifique-se de ter o `package.json` correto):
 
-- Validar se o usuário tem saldo antes da transferência;
+    ```bash
+    npm install express body-parser mysql2 dotenv # Exemplo de pacotes
+    ```
 
-- Antes de finalizar a transferência, deve-se consultar um serviço autorizador externo, use este mock
-  [https://util.devi.tools/api/v2/authorize](https://util.devi.tools/api/v2/authorize) para simular o serviço
-  utilizando o verbo `GET`;
+### 3. Execução
 
-- A operação de transferência deve ser uma transação (ou seja, revertida em qualquer caso de inconsistência) e o
-  dinheiro deve voltar para a carteira do usuário que envia;
+1.  Inicie o servidor Node.js:
 
-- No recebimento de pagamento, o usuário ou lojista precisa receber notificação (envio de email, sms) enviada por um
-  serviço de terceiro e eventualmente este serviço pode estar indisponível/instável. Use este mock
-  [https://util.devi.tools/api/v1/notify)](https://util.devi.tools/api/v1/notify)) para simular o envio da notificação
-  utilizando o verbo `POST`;
+    ```bash
+    node app.js
+    ```
+2.  A API estará rodando em `http://localhost:3000`.
 
-- Este serviço deve ser RESTFul.
+## 📌 Endpoints da API
 
-> Tente ser o mais aderente possível ao que foi pedido, mas não se preocupe se não conseguir atender a todos os
-> requisitos. Durante a entrevista vamos conversar sobre o que você conseguiu fazer e o que não conseguiu.
+### Usuários (`/users`)
 
-### Endpoint de transferência
+| Verbo | Rota | Descrição |
+| :--- | :--- | :--- |
+| **GET** | `/users/:id` | Busca todos os dados de um usuário pelo ID. |
+| **GET** | `/users/:id/balance` | Retorna o saldo atual do usuário. |
+| **POST** | `/users` | Cria um novo usuário. |
+| **DELETE** | `/users/:id` | Deleta um usuário. |
 
-Você pode implementar o que achar conveniente, porém vamos nos atentar **somente** ao fluxo de transferência entre dois
-usuários. A implementação deve seguir o contrato abaixo.
+### Transações (`/transactions`)
 
-```http request
-POST /transfer
-Content-Type: application/json
+| Verbo | Rota | Descrição |
+| :--- | :--- | :--- |
+| **POST** | `/transfer` | **Fluxo de Transferência (Principal Requisito)** |
+| **GET** | `/transactions/:userId` | Retorna o histórico de transações de um usuário (enviadas e recebidas). |
 
-{
-  "value": 100.0,
-  "payer": 4,
-  "payee": 15
-}
-```
+## 🔑 Detalhes da Implementação da Transferência (`POST /transfer`)
 
-Caso ache interessante, faça uma **proposta** de endpoint e apresente para os entrevistadores :heart:
+O endpoint principal (`POST /transfer`) implementa o fluxo de transferência seguindo todos os requisitos de negócio:
 
-# Avaliação
+1.  **Validação do Usuário Pagador (**`payer`**):**
+    * Verifica se o usuário pagador existe.
+    * **Regra Lojista:** Lojistas (`user_type: 'merchant'`) não podem realizar transferências (somente receber).
+2.  **Validação de Saldo:**
+    * Verifica se o saldo do pagador é suficiente para o valor da transferência.
+3.  **Autorização Externa:**
+    * Consulta o serviço mock de autorização (GET: `https://util.devi.tools/api/v2/authorize`). A transferência só prossegue se a resposta for positiva.
+4.  **Transação Atômica:**
+    * Toda a operação (débito do pagador, crédito do recebedor e registro da transação) é realizada dentro de uma **transação de banco de dados**. Isso garante que, em caso de falha em qualquer etapa, todas as modificações sejam revertidas (`rollback`).
+5.  **Notificação Assíncrona (Mock):**
+    * Após a transferência ser concluída com sucesso no banco de dados, é feita a chamada para o serviço mock de notificação (POST: `https://util.devi.tools/api/v1/notify`). Este passo é desacoplado do fluxo principal para evitar que uma instabilidade no serviço de notificação cause a falha de uma transferência já concluída.
 
-Apresente sua solução utilizando o framework que você desejar, justificando a escolha.
-Atente-se a cumprir a maioria dos requisitos, pois você pode cumprir-los parcialmente e durante a avaliação vamos bater
-um papo a respeito do que faltou.
+## 💡 Próximos Passos e Melhorias Propostas (Diferenciais)
 
-## O que será avaliado e valorizamos :heart:
+* **Testes de Unidade e Integração:** Implementar cobertura de testes para os `Services` e `Controllers` (Diferencial).
+* **Validações de Entrada:** Adicionar validações de esquema (Joi, por exemplo) para garantir a integridade dos dados de entrada (CPF/CNPJ, e-mail único, etc.).
+* **Tratamento de Erros Mais Sofisticado:** Criar um *middleware* de erro para padronizar as respostas de erro e evitar vazamento de detalhes internos.
+* **Notificação Assíncrona Real:** Utilizar um sistema de mensageria (como RabbitMQ ou Kafka) para lidar com a notificação de forma verdadeiramente assíncrona.
+* **Dockerização:** Criar um `Dockerfile` e `docker-compose.yml` para facilitar a configuração do ambiente (aplicação + banco de dados) (Diferencial).
 
-Habilidades básicas de criação de projetos backend:
-- Conhecimentos sobre REST
-- Uso do Git
-- Capacidade analítica
-- Apresentação de código limpo e organizado
-
-Conhecimentos intermediários de construção de projetos manuteníveis:
-- Aderência a recomendações de implementação como as PSRs
-- Aplicação e conhecimentos de SOLID
-- Identificação e aplicação de Design Patterns
-- Noções de funcionamento e uso de Cache
-- Conhecimentos sobre conceitos de containers (Docker, Podman etc)
-- Documentação e descrição de funcionalidades e manuseio do projeto
-- Implementação e conhecimentos sobre testes de unidade e integração
-- Identificar e propor melhorias
-- Boas noções de bancos de dados relacionais
-
-Aptidões para criar e manter aplicações de alta qualidade:
-- Aplicação de conhecimentos de observabilidade
-- Utlização de CI para rodar testes e análises estáticas
-- Conhecimentos sobre bancos de dados não-relacionais
-- Aplicação de arquiteturas (CQRS, Event-sourcing, Microsserviços, Monolito modular)
-- Uso e implementação de mensageria
-- Noções de escalabilidade
-- Boas habilidades na aplicação do conhecimento do negócio no software
-- Implementação margeada por ferramentas de qualidade (análise estática, PHPMD, PHPStan, PHP-CS-Fixer etc)
-- Noções de PHP assíncrono
-
-### Boas práticas
-
-Caso use PHP tente seguir as [PSRs](https://www.php-fig.org/psr/psr-12/), caso use outro framework ou linguagem, tente
-seguir as boas práticas da comunidade.
-
-Uma sugestão para revisar a qualidade do seu código é usar ferramentas como o PHPMD antes de submeter o seu teste.
-O comando a seguir pode ser usado para rodar o PHPMD no seu projeto localmente, por exemplo:
-```bash
-docker run -it --rm -v $(pwd):/project -w /project jakzal/phpqa phpmd app text cleancode,codesize,controversial,design,naming,unusedcode
-```
-
-## O que NÃO será avaliado :warning:
-
-- Fluxo de cadastro de usuários e lojistas
-- Frontend (só avaliaremos a (API Restful)[https://www.devmedia.com.br/rest-tutorial/28912])
-- Autenticação
-
-## O que será um Diferencial
-
-- Uso de Docker
-- Uma cobertura de testes consistente
-- Uso de Design Patterns
-- Documentação
-- Proposta de melhoria na arquitetura
-- Ser consistente e saber argumentar suas escolhas
-- Apresentar soluções que domina
-- Modelagem de Dados
-- Manutenibilidade do Código
-- Tratamento de erros
-- Cuidado com itens de segurança
-- Arquitetura (estruturar o pensamento antes de escrever)
-- Carinho em desacoplar componentes (outras camadas, service, repository)
-
-## Materiais úteis
-
-- https://picpay.com/site/sobre-nos
-- https://hub.packtpub.com/why-we-need-design-patterns/
-- https://refactoring.guru/
-- http://br.phptherightway.com/
-- https://www.php-fig.org/psr/psr-12/
-- https://www.atlassian.com/continuous-delivery/software-testing/types-of-software-testing
-- https://github.com/exakat/php-static-analysis-tools
-- https://martinfowler.com/articles/microservices.html
-- https://docs.guzzlephp.org/en/stable/request-options.html
-- https://www.devmedia.com.br/rest-tutorial/28912
+---
